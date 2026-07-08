@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Link as LinkIcon, FileText, History, Settings, LogOut, 
-  Bell, ShieldCheck, Mail, CheckCircle, AlertCircle, X, ChevronRight, Sun, Moon 
+  Bell, ShieldCheck, Mail, CheckCircle, AlertCircle, X, ChevronRight, Sun, Moon,
+  Brain
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -64,6 +65,7 @@ const MainLayout = () => {
           <NavItem to="/scan-url" icon={LinkIcon} label="URL Scanner" />
           <NavItem to="/scan-text" icon={FileText} label="Content Scanner" />
           <NavItem to="/history" icon={History} label="Intelligence Logs" />
+          <NavItem to="/ai-analyst" icon={Brain} label="AI Security Analyst" />
         </nav>
 
         <div className="sidebar-section" style={{ marginTop: '2rem' }}>Administration</div>

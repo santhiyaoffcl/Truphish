@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, Mail, Lock, User, ArrowRight, Github, Chrome } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { Github, Chrome } from '../components/Icons';
 import api from '../utils/api';
-
+import { useAuth } from '../context/AuthContext';
 function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -10,6 +11,7 @@ function Register() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { theme } = useAuth();
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -113,10 +115,10 @@ function Register() {
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-          <button type="button" className="social-btn" onClick={() => window.location.href='http://localhost:5000/auth/google'}>
+          <button type="button" className="social-btn" onClick={() => window.location.href='http://localhost:5000/api/auth/google'}>
             <Chrome size={20} /> Google
           </button>
-          <button type="button" className="social-btn" onClick={() => window.location.href='http://localhost:5000/auth/github'}>
+          <button type="button" className="social-btn" onClick={() => window.location.href='http://localhost:5000/api/auth/github'}>
             <Github size={20} /> GitHub
           </button>
         </div>

@@ -8,6 +8,8 @@ router.use(authMiddleware);
 
 router.post('/url', scanController.scanUrl);
 router.post('/text', scanController.scanText);
+router.get('/stream/url', scanController.streamUrl);
+router.get('/stream/text', scanController.streamText);
 router.get('/history', scanController.getHistory);
 router.delete('/history', scanController.clearHistory);
 

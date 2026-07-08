@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Github, Chrome } from '../components/Icons';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, theme } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -19,7 +19,7 @@ function Login() {
     try {
       const res = await api.post('/auth/login', { email, password });
       login(res.data.user, res.data.token);
-      navigate('/dashboard');
+      navigate('/');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check credentials.');
     } finally {
@@ -83,10 +83,10 @@ function Login() {
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-          <button type="button" className="social-btn" onClick={() => window.location.href='http://localhost:5000/auth/google'}>
+          <button type="button" className="social-btn" onClick={() => window.location.href='http://localhost:5000/api/auth/google'}>
             <Chrome size={20} /> Google
           </button>
-          <button type="button" className="social-btn" onClick={() => window.location.href='http://localhost:5000/auth/github'}>
+          <button type="button" className="social-btn" onClick={() => window.location.href='http://localhost:5000/api/auth/github'}>
             <Github size={20} /> GitHub
           </button>
         </div>
