@@ -5,7 +5,7 @@ import {
   FileText, Info, CheckCircle2, AlertTriangle, Zap, Terminal, AlertCircle,
   Target, Globe
 } from 'lucide-react';
-import api from '../utils/api';
+import api, { API_BASE_URL } from '../utils/api';
 
 function TextScanner() {
   const [text, setText] = useState('');
@@ -51,7 +51,7 @@ function TextScanner() {
     const token = localStorage.getItem('token');
     // Open standard EventSource stream
     const eventSource = new EventSource(
-      `http://localhost:5000/api/scan/stream/text?text=${encodeURIComponent(text)}&token=${token}`
+      `${API_BASE_URL}/api/scan/stream/text?text=${encodeURIComponent(text)}&token=${token}`
     );
 
     eventSource.onmessage = (event) => {

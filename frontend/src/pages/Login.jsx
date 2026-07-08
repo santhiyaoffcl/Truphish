@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, Mail, Lock, ArrowRight } from 'lucide-react';
 import { Github, Chrome } from '../components/Icons';
-import api from '../utils/api';
+import api, { API_BASE_URL } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 function Login() {
   const [email, setEmail] = useState('');
@@ -83,10 +83,10 @@ function Login() {
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-          <button type="button" className="social-btn" onClick={() => window.location.href='http://localhost:5000/api/auth/google'}>
+          <button type="button" className="social-btn" onClick={() => window.location.href=`${API_BASE_URL}/api/auth/google`}>
             <Chrome size={20} /> Google
           </button>
-          <button type="button" className="social-btn" onClick={() => window.location.href='http://localhost:5000/api/auth/github'}>
+          <button type="button" className="social-btn" onClick={() => window.location.href=`${API_BASE_URL}/api/auth/github`}>
             <Github size={20} /> GitHub
           </button>
         </div>
