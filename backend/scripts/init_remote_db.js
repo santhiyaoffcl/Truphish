@@ -24,6 +24,8 @@ async function initRemoteDb() {
       host: dbHost,
       user: dbUser,
       password: dbPassword,
+      port: parseInt(process.env.DB_PORT || '3306', 10),
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
       multipleStatements: true
     });
 
