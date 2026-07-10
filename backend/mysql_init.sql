@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(191) NOT NULL UNIQUE,
     username VARCHAR(100),
     password_hash VARCHAR(255),
     role ENUM('user', 'admin') DEFAULT 'user',
