@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const ScanHistory = require('../models/scanHistory');
 const axios = require('axios');
 
 exports.scanUrl = async (req, res) => {
@@ -20,7 +20,7 @@ async function processScan(userId, input, type, res) {
     let scanResult = {
         risk_score: 0,
         prediction: 'unknown',
-        explanations: '[]',
+        explanations: [],
         status: 'failed'
     };
 
@@ -36,32 +36,38 @@ async function processScan(userId, input, type, res) {
         if (response.data) {
             scanResult.risk_score = response.data.risk_score;
             scanResult.prediction = response.data.prediction;
-            scanResult.explanations = JSON.stringify(response.data.explanations || []);
+            scanResult.explanations = response.data.explanations || [];
             scanResult.status = 'success';
         }
     } catch (error) {
         console.error('ML Service Error:', error.message);
-        // Do not crash, keep status as failed and return safe fallback or just error indicator
     }
 
     const latency_ms = Date.now() - startTime;
 
     try {
-        // Save to DB
-        const [result] = await db.query(
-            `INSERT INTO scan_history 
-            (user_id, input, type, risk_score, prediction, explanations, source, status, latency_ms) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [userId, input, type, scanResult.risk_score, scanResult.prediction, scanResult.explanations, 'web', scanResult.status, latency_ms]
-        );
-
-        res.json({
-            id: result.insertId,
+        // Save to MongoDB
+        const scan = new ScanHistory({
+            user_id: userId,
             input,
             type,
             risk_score: scanResult.risk_score,
             prediction: scanResult.prediction,
-            explanations: JSON.parse(scanResult.explanations),
+            explanations: scanResult.explanations,
+            source: 'web',
+            status: scanResult.status,
+            latency_ms
+        });
+
+        const savedScan = await scan.save();
+
+        res.json({
+            id: savedScan.id,
+            input,
+            type,
+            risk_score: scanResult.risk_score,
+            prediction: scanResult.prediction,
+            explanations: scanResult.explanations,
             status: scanResult.status,
             latency_ms
         });
@@ -78,30 +84,30 @@ exports.getHistory = async (req, res) => {
         const offset = (page - 1) * limit;
         const search = req.query.search || '';
 
-        // Only search input text
-        const searchQuery = `%${search}%`;
+        // Case-insensitive search on input
+        const filter = {
+            user_id: req.user.id,
+            input: { $regex: search, $options: 'i' }
+        };
 
-        const [history] = await db.query(
-            `SELECT id, input, type, risk_score, prediction, explanations, source, status, latency_ms, created_at
-             FROM scan_history 
-             WHERE user_id = ? AND input LIKE ?
-             ORDER BY created_at DESC 
-             LIMIT ? OFFSET ?`,
-            [req.user.id, searchQuery, limit, offset]
-        );
+        const history = await ScanHistory.find(filter)
+            .sort({ created_at: -1 })
+            .skip(offset)
+            .limit(limit);
 
-        const [totalCountResult] = await db.query(
-            `SELECT COUNT(id) AS total 
-             FROM scan_history 
-             WHERE user_id = ? AND input LIKE ?`,
-            [req.user.id, searchQuery]
-        );
-        const total = totalCountResult[0].total;
+        const total = await ScanHistory.countDocuments(filter);
 
-        // Parse JSON explanations string back to array before sending
         const formattedHistory = history.map(item => ({
-            ...item,
-            explanations: item.explanations || []
+            id: item.id,
+            input: item.input,
+            type: item.type,
+            risk_score: item.risk_score,
+            prediction: item.prediction,
+            explanations: item.explanations || [],
+            source: item.source,
+            status: item.status,
+            latency_ms: item.latency_ms,
+            created_at: item.created_at
         }));
 
         res.json({
@@ -122,7 +128,7 @@ exports.getHistory = async (req, res) => {
 exports.clearHistory = async (req, res) => {
   try {
     const userId = req.user.id;
-    await db.query('DELETE FROM scan_history WHERE user_id = ?', [userId]);
+    await ScanHistory.deleteMany({ user_id: userId });
     res.json({ message: 'Scan history successfully cleared', success: true });
   } catch (error) {
     console.error("Clear history error:", error);
@@ -175,22 +181,18 @@ async function processStream(req, res, input, type) {
 
                 if (finalResult) {
                     const latency_ms = Date.now() - startTime;
-                    await db.query(
-                        `INSERT INTO scan_history 
-                        (user_id, input, type, risk_score, prediction, explanations, source, status, latency_ms) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [
-                            req.user.id,
-                            input,
-                            type,
-                            finalResult.risk_score,
-                            finalResult.prediction,
-                            JSON.stringify(finalResult.explanations || []),
-                            'web',
-                            'success',
-                            latency_ms
-                        ]
-                    );
+                    const scan = new ScanHistory({
+                        user_id: req.user.id,
+                        input,
+                        type,
+                        risk_score: finalResult.risk_score,
+                        prediction: finalResult.prediction,
+                        explanations: finalResult.explanations || [],
+                        source: 'web',
+                        status: 'success',
+                        latency_ms
+                    });
+                    await scan.save();
                 }
             } catch (dbError) {
                 console.error('Database insertion error for stream:', dbError);

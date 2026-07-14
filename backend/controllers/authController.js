@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -11,20 +11,22 @@ exports.register = async (req, res) => {
             return res.status(400).json({ message: 'Please provide email, username and password' });
         }
 
-        const [existingUser] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
-        if (existingUser.length > 0) {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        const [result] = await db.query(
-            'INSERT INTO users (email, username, password_hash) VALUES (?, ?, ?)',
-            [email, username, hashedPassword]
-        );
+        const user = new User({
+            email,
+            username,
+            password_hash: hashedPassword
+        });
+        const savedUser = await user.save();
 
-        res.status(201).json({ message: 'User registered successfully', userId: result.insertId });
+        res.status(201).json({ message: 'User registered successfully', userId: savedUser.id });
     } catch (error) {
         console.error('Register error:', error);
         res.status(500).json({ message: 'Server error during registration' });
@@ -40,14 +42,12 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: 'Please provide email and password' });
         }
 
-        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-        if (users.length === 0) {
+        const user = await User.findOne({ email });
+        if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        const user = users[0];
         const isMatch = await bcrypt.compare(password, user.password_hash);
-        
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
@@ -74,14 +74,17 @@ exports.login = async (req, res) => {
 // Get current user
 exports.getMe = async (req, res) => {
     try {
-        const [users] = await db.query('SELECT id, email, username, role, two_factor_enabled, created_at FROM users WHERE id = ?', [req.user.id]);
-        if (users.length === 0) {
+        const user = await User.findById(req.user.id).select('id email username role two_factor_enabled created_at');
+        if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        const user = users[0];
         res.json({
-            ...user,
-            two_factor_enabled: !!user.two_factor_enabled
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            role: user.role,
+            two_factor_enabled: !!user.two_factor_enabled,
+            created_at: user.created_at
         });
     } catch (error) {
         console.error('Get me error:', error);
@@ -89,6 +92,7 @@ exports.getMe = async (req, res) => {
     }
 };
 
+// Update profile
 exports.updateProfile = async (req, res) => {
     try {
         const { username } = req.body;
@@ -96,15 +100,24 @@ exports.updateProfile = async (req, res) => {
             return res.status(400).json({ message: 'Username is required' });
         }
 
-        await db.query('UPDATE users SET username = ? WHERE id = ?', [username, req.user.id]);
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { username },
+            { new: true }
+        ).select('id email username role two_factor_enabled');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
         
-        // Fetch updated user
-        const [users] = await db.query('SELECT id, email, username, role, two_factor_enabled FROM users WHERE id = ?', [req.user.id]);
         res.json({ 
             message: 'Profile updated successfully', 
             user: {
-                ...users[0],
-                two_factor_enabled: !!users[0].two_factor_enabled
+                id: user.id,
+                email: user.email,
+                username: user.username,
+                role: user.role,
+                two_factor_enabled: !!user.two_factor_enabled
             } 
         });
     } catch (error) {
@@ -121,12 +134,11 @@ exports.changePassword = async (req, res) => {
             return res.status(400).json({ message: 'Please provide both current and new passwords' });
         }
 
-        const [users] = await db.query('SELECT password_hash FROM users WHERE id = ?', [req.user.id]);
-        if (users.length === 0) {
+        const user = await User.findById(req.user.id);
+        if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const user = users[0];
         const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
         if (!isMatch) {
             return res.status(400).json({ message: 'Incorrect current password' });
@@ -135,7 +147,9 @@ exports.changePassword = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-        await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [hashedPassword, req.user.id]);
+        user.password_hash = hashedPassword;
+        await user.save();
+
         res.json({ message: 'Password updated successfully' });
     } catch (error) {
         console.error('Change password error:', error);
@@ -147,7 +161,14 @@ exports.changePassword = async (req, res) => {
 exports.setup2FA = async (req, res) => {
     try {
         const mockSecret = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        await db.query('UPDATE users SET two_factor_secret = ? WHERE id = ?', [mockSecret, req.user.id]);
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { two_factor_secret: mockSecret },
+            { new: true }
+        );
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
         res.json({ message: '2FA Setup initiated', secret: mockSecret });
     } catch (error) {
         res.status(500).json({ message: 'Error setting up 2FA' });
@@ -160,7 +181,10 @@ exports.verify2FA = async (req, res) => {
         const { code, disable } = req.body;
         
         if (disable) {
-            await db.query('UPDATE users SET two_factor_enabled = FALSE, two_factor_secret = NULL WHERE id = ?', [req.user.id]);
+            await User.findByIdAndUpdate(req.user.id, {
+                two_factor_enabled: false,
+                two_factor_secret: null
+            });
             return res.json({ message: '2FA disabled successfully' });
         }
 
@@ -168,12 +192,13 @@ exports.verify2FA = async (req, res) => {
             return res.status(400).json({ message: 'Verification code required' });
         }
         
-        // Mock verification validation - accept any 6 digit code for demonstration
         if (!/^\d{6}$/.test(code)) {
             return res.status(400).json({ message: 'Invalid verification code format (must be 6 digits)' });
         }
 
-        await db.query('UPDATE users SET two_factor_enabled = TRUE WHERE id = ?', [req.user.id]);
+        await User.findByIdAndUpdate(req.user.id, {
+            two_factor_enabled: true
+        });
         res.json({ message: '2FA verified and enabled successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error verifying 2FA' });
@@ -182,12 +207,9 @@ exports.verify2FA = async (req, res) => {
 
 // OAuth Handlers (Mock logic for demonstration)
 exports.googleOAuth = async (req, res) => {
-    // In a real scenario, this would redirect to Google's OAuth consent screen
     res.redirect('http://localhost:5173/dashboard?auth_success=google');
 };
 
 exports.githubOAuth = async (req, res) => {
-    // In a real scenario, this would redirect to GitHub's OAuth consent screen
     res.redirect('http://localhost:5173/dashboard?auth_success=github');
 };
-
