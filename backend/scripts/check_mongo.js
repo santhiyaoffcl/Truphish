@@ -1,5 +1,10 @@
 // backend/scripts/check_mongo.js
 const mongoose = require('mongoose');
+const dns = require('dns');
+
+// Force public DNS resolvers to handle SRV records
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
 require('dotenv').config();
 const User = require('../models/user');
 const ScanHistory = require('../models/scanHistory');
