@@ -2,12 +2,13 @@
 <div align="center">
   <h1>🛡️ TruPhish</h1>
   <p><strong>Advanced AI-Powered Phishing Domain Detection System</strong></p>
+  <p>🚀 <strong><a href="https://truphish.vercel.app/" target="_blank">Live Demo</a></strong></p>
 
   <p>
     <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
     <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
     <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
-    <img src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL" />
+    <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
   </p>
 </div>
 
@@ -37,7 +38,7 @@
 
 ### Backend (Core API)
 - **Node.js & Express.js** for handling business logic and routing.
-- **MySQL** as the primary relational database.
+- **MongoDB** as the database (via **Mongoose**).
 - **JSON Web Tokens (JWT) & bcryptjs** for secure auth and user management.
 
 ### Machine Learning Service
@@ -64,7 +65,7 @@ TruPhish/
 Before you begin, ensure you have the following installed:
 - [Node.js](https://nodejs.org/) (v18 or higher)
 - [Python](https://www.python.org/) (3.10 or higher)
-- [MySQL Server](https://www.mysql.com/)
+- [MongoDB](https://www.mongodb.com/) (Local or Atlas)
 
 ### 🛠️ One-Click Installation (Windows)
 
